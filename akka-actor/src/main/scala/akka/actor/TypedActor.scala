@@ -89,12 +89,12 @@ trait TypedActorFactory {
     val proxyVar = new AtomVar[R] //Chicken'n'egg-resolver
     val c = props.creator //Cache this to avoid closing over the Props
     val i = props.interfaces //Cache this to avoid closing over the Props
-    val ap = Props(new akka.actor.TypedActor.TypedActor[R, T](proxyVar, c(), i)).withDeploy(props.actorProps().deploy)
+    val ap = Props(new akka.actor.typed.TypedActor[R, T](proxyVar, c(), i)).withDeploy(props.actorProps().deploy)
     typedActor.createActorRefProxy(props, proxyVar, actorFactory.actorOf(ap, name))
   }
 
   /**
-   * Creates a TypedActor that intercepts the calls and forwards them as [[akka.actor.TypedActor.MethodCall]]
+   * Creates a TypedActor that intercepts the calls and forwards them as [[akka.actor.typed.MethodCall]]
    * to the provided ActorRef.
    */
   def typedActorOf[R <: AnyRef, T <: R](props: TypedProps[T], actorRef: ActorRef): R =
@@ -269,7 +269,7 @@ object TypedActor extends ExtensionId[TypedActorExtension] with ExtensionIdProvi
     self =>
     // if we were remote deployed we need to create a local proxy
     if (!self.context.parent.asInstanceOf[InternalActorRef].isLocal)
-      akka.actor.TypedActor
+      akka.actor.typed
         .get(self.context.system)
         .createActorRefProxy(TypedProps(interfaces, createInstance), proxyVar, self.context.self)
 
@@ -297,7 +297,7 @@ object TypedActor extends ExtensionId[TypedActorExtension] with ExtensionIdProvi
           }
         }
       } finally {
-        akka.actor.TypedActor(self.context.system).invocationHandlerFor(proxyVar.get) match {
+        akka.actor.typed(self.context.system).invocationHandlerFor(proxyVar.get) match {
           case null =>
           case some =>
             some.actorVar.set(self.context.system.deadLetters) //Point it to the DLQ
@@ -322,12 +322,12 @@ object TypedActor extends ExtensionId[TypedActorExtension] with ExtensionIdProvi
     }
 
     protected def withContext[U](unitOfWork: => U): U = {
-      akka.actor.TypedActor.selfReference.set(proxyVar.get)
-      akka.actor.TypedActor.currentContext.set(self.context)
+      akka.actor.typed.selfReference.set(proxyVar.get)
+      akka.actor.typed.currentContext.set(self.context)
       try unitOfWork
       finally {
-        akka.actor.TypedActor.selfReference.set(null)
-        akka.actor.TypedActor.currentContext.set(null)
+        akka.actor.typed.selfReference.set(null)
+        akka.actor.typed.currentContext.set(null)
       }
     }
 
@@ -508,7 +508,7 @@ object TypedActor extends ExtensionId[TypedActorExtension] with ExtensionIdProvi
 
     @nowarn("msg=deprecated")
     def toTypedActorInvocationHandler(system: ActorSystem): TypedActorInvocationHandler =
-      new TypedActorInvocationHandler(akka.actor.TypedActor(system), new AtomVar[ActorRef](actor), new Timeout(timeout))
+      new TypedActorInvocationHandler(akka.actor.typed(system), new AtomVar[ActorRef](actor), new Timeout(timeout))
   }
 }
 
